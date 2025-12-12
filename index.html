@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Astronomical Tuition Centre - Due Slip Generator</title>
+
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f7fa; }
+    .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    h1 { text-align: center; color: #20293a; margin-bottom: 5px; }
+    h4 { text-align: center; margin-top: 0; color: #555; }
+    input, select { width: 90%; padding: 12px; margin: 10px 0; font-size: 16px; border-radius: 8px; border: 1px solid #bbb; }
+    button { padding: 12px 18px; margin-top: 10px; border: none; background: #0d6efd; color: white; font-size: 17px; border-radius: 8px; cursor: pointer; margin-right: 5px; }
+    button:hover { background: #0b5ed7; }
+    .slip { background: white; padding: 15px; margin-top: 15px; border-radius: 10px; border: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;}
+    .slip-info { flex: 1 1 70%; }
+    .slip button { margin-top: 5px; }
+    @media (max-width: 600px) {
+      .container { padding: 15px; }
+      input, select { font-size: 14px; }
+      button { font-size: 15px; margin-right: 0; margin-top: 5px; }
+    }
+  </style>
+</head>
+
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+  const { useState, useEffect } = React;
+
+  function App() {
+    const signatureURL = "https://i.ibb.co/qLNDrrMH/SIGN-removebg-preview.png";
+    const batch = "2025-26";
+
+    const [nameSuggestions, setNameSuggestions] = useState([
+      "Aryan Sharma","Priya Verma","Rahul Singh","Sneha Gupta",
+      "Ananya Mehta","Karan Kapoor","Riya Jain","Aditya Patel"
+    ]);
+    const [name, setName] = useState("");
+    const [month, setMonth] = useState("");
+    const [amount, setAmount] = useState("");
+    const [entries, setEntries] = useState([]);
+    const [editingIndex, setEditingIndex] = useState(null);
+
+    const today = new Date().toLocaleDateString("en-IN");
+
+    // Load previous entries from localStorage
+    useEffect(() => {
+      const savedEntries = localStorage.getItem("dueSlipEntries");
+      if (savedEntries) setEntries(JSON.parse(savedEntries));
+    }, []);
+
+    const saveEntry = () => {
+      if (!name || !month || !amount) {
+        alert("Please fill all fields");
+        return;
+      }
+
+      const entry = {
+        name,
+        month,
+        amount,
+        date: today
+      };
+
+      let updatedEntries = [...entries];
+      if (editingIndex !== null) {
+        updatedEntries[editingIndex] = entry;
+        setEditingIndex(null);
+      } else {
+        updatedEntries.push(entry);
+      }
+
+      setEntries(updatedEntries);
+      localStorage.setItem("dueSlipEntries", JSON.stringify(updatedEntries));
+
+      // Add name to suggestions
+      if (!nameSuggestions.includes(name)) {
+        setNameSuggestions([...nameSuggestions, name]);
+      }
+
+      // Reset form
+      setName("");
+      setMonth("");
+      setAmount("");
+    };
+
+    const clearAll = () => {
+      if (window.confirm("Are you sure you want to clear all entries?")) {
+        setEntries([]);
+        localStorage.removeItem("dueSlipEntries");
+        setName("");
+        setMonth("");
+        setAmount("");
+        setEditingIndex(null);
+      }
+    };
+
+    const modifyEntry = (index) => {
+      const entry = entries[index];
+      setName(entry.name);
+      setMonth(entry.month);
+      setAmount(entry.amount);
+      setEditingIndex(index);
+    };
+
+    const generatePDF = (entry) => {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF("p", "mm", "a4");
+      const formattedAmount = parseFloat(entry.amount).toFixed(2);
+
+      // HEADER
+      pdf.setFillColor(0, 102, 204);
+      pdf.rect(0, 0, 210, 40, "F");
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(22);
+      pdf.setTextColor(255, 255, 255);
+      pdf.text("Astronomical Tuition Centre", 105, 25, { align: "center" });
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("Chugatte Wala,Ferozepur | +91 81968 83884", 105, 33, { align: "center" });
+
+      // TITLE
+      pdf.setFontSize(18);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("DUE SLIP", 105, 55, { align: "center" });
+
+      // BODY CARD
+      pdf.setDrawColor(180);
+      pdf.setFillColor(245, 247, 250);
+      pdf.roundedRect(12, 60, 186, 160, 5, 5, "FD");
+
+      const startX = 20;
+      let startY = 75;
+      const lineGap = 12;
+      const labelWidth = 45;
+
+      pdf.setFontSize(13);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Student Name:", startX, startY);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(entry.name, startX + labelWidth, startY);
+
+      startY += lineGap;
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Batch:", startX, startY);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(batch, startX + labelWidth, startY);
+
+      startY += lineGap;
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Month:", startX, startY);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(entry.month, startX + labelWidth, startY);
+
+      startY += lineGap;
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Due Amount:", startX, startY);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`Rs. ${formattedAmount}`, startX + labelWidth, startY);
+
+      startY += lineGap;
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Date:", startX, startY);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(entry.date, startX + labelWidth, startY);
+
+      // Amount Box
+      pdf.setFillColor(0, 102, 204);
+      pdf.rect(150, 100, 45, 25, "F");
+      pdf.setFontSize(18);
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Rs. ${formattedAmount}`, 172, 118, { align: "center" });
+
+      // Signature
+      pdf.setFontSize(12);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Authorised Signature:", 140, 165);
+      pdf.addImage(signatureURL, "PNG", 140, 170, 50, 22);
+
+      const fileName = `${entry.name.replace(/\s+/g, "_")}_${entry.date.replace(/\//g,"-")}.pdf`;
+      pdf.save(fileName);
+    };
+
+    return (
+      <div className="container">
+        <h1>Astronomical Tuition Centre</h1>
+        <h4>Address: Chugatte Wala, Ferozepur<br/>Phone: +91 81968 83884</h4>
+
+        <h2>Generate Due Slip</h2>
+
+        <input
+          placeholder="Student Name"
+          list="name-suggestions"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <datalist id="name-suggestions">
+          {nameSuggestions.map((n, i) => <option key={i} value={n} />)}
+        </datalist>
+
+        <input type="text" placeholder="Batch" value={batch} disabled />
+
+        <select value={month} onChange={(e) => setMonth(e.target.value)}>
+          <option value="">Select Month</option>
+          {["January","February","March","April","May","June","July","August","September","October","November","December"].map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+
+        <input
+          type="number"
+          placeholder="Due Amount"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+
+        <button onClick={saveEntry}>{editingIndex !== null ? "Update Entry" : "Save Entry"}</button>
+        <button style={{background:"#dc3545", marginLeft: "80px"}} onClick={clearAll}>Clear All</button>
+
+        {entries.length > 0 && (
+          <>
+            <h2>Saved Entries</h2>
+            {entries.map((entry, idx) => (
+              <div className="slip" key={idx}>
+                <div className="slip-info">
+                  <b>{entry.name}</b> | Month: {entry.month} | Amount: Rs.{parseFloat(entry.amount).toFixed(2)} | Date: {entry.date}
+                </div>
+                <div>
+                  <button onClick={() => generatePDF(entry)}>Generate PDF</button>
+  <button
+    style={{ background: "#198754", marginLeft: "10px" }}
+    onClick={() => modifyEntry(idx)}
+  >
+    Modify
+  </button>
+                                  </div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  ReactDOM.render(<App />, document.getElementById("root"));
+</script>
+</body>
+</html>
